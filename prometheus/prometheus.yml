@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: llamacpp
+    metrics_path: /metrics
+    authorization:
+      type: Bearer
+      credentials: sk-llama-41a34e07b76cef5d90c868cd00df0005
+    static_configs:
+      - targets: ['llama:8080']
+
+  - job_name: gpu
+    static_configs:
+      - targets: ['gpu-exporter:9835']
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
