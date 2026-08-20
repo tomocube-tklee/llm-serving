@@ -4,16 +4,21 @@ services:
     container_name: llama-server
     restart: unless-stopped
     ports:
-      # Bind only to the Tailscale interface so the API is reachable
-      # over the tailnet but NOT exposed on the LAN or public internet.
       - "100.117.22.53:8080:8080"
     volumes:
-      # Persist downloaded GGUF models here so they aren't re-downloaded.
       - ./models:/models
     environment:
       - LLAMA_CACHE=/models
+    # --no-mmproj: 이 모델은 비전-언어 모델이라 mmproj 가 딸려오는데 봇은 이미지를
+    #   넣지 않는다. 빼면 VRAM 이 준다.
+    # --reasoning off: thinking 은 이 모델의 기본값이 ON 이다. 켜두면 분류기
+    #   페이로드의 max_tokens(5) 를 추론 토큰이 다 써서 content 가 빈 문자열로 오고
+    #   (finish_reason=length) 전 분류기가 조용히 폴백한다. 요약 품질 이득은 judge
+    #   평균 7.4 → 7.7 로 작았고, 켜려면 max_tokens 와 타임아웃을 코드에서 함께
+    #   올려야 한다.
+    # 주의: 아래는 YAML folded 블록이라 '#' 가 주석이 아니라 명령 문자열이 된다.
     command: >
-      -hf unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q5_K_M
+      -hf unsloth/Qwen3.8-27B-GGUF:UD-Q5_K_M
       --host 0.0.0.0 --port 8080
       -ngl 99
       -c 262144
@@ -24,7 +29,9 @@ services:
       --api-key-file /models/api-keys.txt
       --metrics
       --verbose
-      -a qwen3-instruct
+      -a qwen3.8
+      --no-mmproj
+      --reasoning off
     deploy:
       resources:
         reservations:
@@ -95,8 +102,6 @@ services:
       - grafana-data:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      # 값은 이 디렉토리의 .env 에 있다(git 미추적). 미설정이면 compose 가 즉시
-      # 실패한다 — 기본값으로 조용히 되돌아가지 않게 하기 위함.
       - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:?GF_ADMIN_PASSWORD must be set in .env}
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
